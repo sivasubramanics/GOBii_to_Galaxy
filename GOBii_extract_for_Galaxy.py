@@ -1,5 +1,13 @@
-# Usage: GOBii_extract_for_Galaxy.py <Module> <username> <password>
-# Contact: s.sivasubramani@cgiar.org
+#!/usr/bin/env python
+# title           :GOBii_extract_for_Galaxy.py
+# description     :This will help the user to pull the data from GOBii using BrAPI calls.
+# author          :s.sivasubramani@cgiar.org
+# date            :20190729
+# version         :0.1
+# usage           :python GOBii_extract_for_Galaxy.py
+# notes           :
+# python_version  :3.7.4
+# ==============================================================================
 
 import requests
 import sys
