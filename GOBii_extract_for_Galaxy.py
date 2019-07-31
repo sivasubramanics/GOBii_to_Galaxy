@@ -13,15 +13,16 @@ import requests
 import sys
 from optparse import OptionParser
 
-usage = "usage: %prog [options] \n\n\t\
+PAGESIZE = 100000
+usage = "usage: python %prog [options] \n\n\t\
 %prog -m Authenticate -U http://hackathon.gobii.org:8081/gobii-dev/ -u username -p password \n\t\
-%prog -m Variantset -U http://hackathon.gobii.org:8081/gobii-dev/ -x KYxmnDfwwgcIM+17tvavIlU \n\t\
-%prog -m Extract -U http://hackathon.gobii.org:8081/gobii-dev/ -x KYxmnDfwwgcIM+17tvavIlU -v 4 \n\t\
+%prog -m Variantset -U http://hackathon.gobii.org:8081/gobii-dev/ -x KYxmnDfwwgcIM+17tvavIlU -o outputFile\n\t\
+%prog -m Extract -U http://hackathon.gobii.org:8081/gobii-dev/ -x KYxmnDfwwgcIM+17tvavIlU -v 4 -o outputFile\n\t\
 "
 parser = OptionParser(usage=usage)
 parser.add_option("-m", "--module", dest="module",
-                  help="One of the modules to perform. \"Authentication\", \"Variantset\", \"Extract\"",
-                  metavar="Authentication")
+                  help="One of the modules to perform. \"Authenticate\", \"Variantset\", \"Extract\"",
+                  metavar="Authenticate")
 parser.add_option("-U", "--url", dest="url", help="GDM url. eg: http://hackathon.gobii.org:8081/gobii-dev/",
                   metavar="URL")
 parser.add_option("-u", "--username", dest="username", help="GDM username. eg: gadm", metavar="USERNAME")
@@ -60,49 +61,68 @@ IMPORTANT: Make sure the api_path call it uses from BrAPI
 
 
 def get_variantset_table(url, accessToken, outFile):
+    '''
+    funtion to extract dictionary of information available under the GDM instance
+    :param url: GDM url eg: http://hackathon.gobii.org:8081/gobii-dev/
+    :param accessToken: accessToken String got from getAccessToken
+    :param outFile: OuputFile to create table of results
+    :return: 
+    '''
     api_path = 'brapi/v1/variantsets'
     headers = {'X-Auth-Token': accessToken}
     r = requests.get(url + api_path, headers=headers)
     return jsonToFile(r.json(), outFile)
 
 
-def writeMatrixToFile(matrix, outFile):
+def writeMatrixToFile(genotypeMatrix, outFile):
+    '''
+
+    :param genotypeMatrix:
+    :param outFile:
+    :return:
+    '''
     outHeader = "marker_name"
     outFileHandle = open(outFile, 'w')
-    for sampleName in matrix['name']:
+    for sampleName in genotypeMatrix['name']:
         outHeader = outHeader + "\t" + sampleName
     outFileHandle.write(outHeader + "\n")
 
-    for markerName in matrix:
+    for markerName in genotypeMatrix:
         if markerName is not 'name':
             outString = markerName
-            for sampleName in matrix[markerName]:
-                outString = outString + "\t" + matrix[markerName][sampleName]
+            for sampleName in genotypeMatrix[markerName]:
+                outString = outString + "\t" + genotypeMatrix[markerName][sampleName]
             outFileHandle.write(outString + "\n")
     return outFileHandle.close()
 
 
 def get_variantset_matrix(url, accessToken, variantSetId, outFile):
+    '''
+    function to pull genotype matix and parse that to a tab
+    :param url:
+    :param accessToken:
+    :param variantSetId:
+    :param outFile:
+    :return:
+    '''
     api_path = 'brapi/v1/variantsets/' + variantSetId + "/calls"
     headers = {'X-Auth-Token': accessToken}
-    params = {'pageSize': 100}
-    matrix = {}
+    params = {'pageSize': PAGESIZE}
+    genotypeMatrix = {}
     pageToken = ""
     r = requests.get(url + api_path, params=params, headers=headers)
     if 'nextPageToken' in r.json()['metaData']['pagination']:
-        print(r.json()['metaData']['pagination']['nextPageToken'])
         pageToken = r.json()['metaData']['pagination']['nextPageToken']
-    matrix = jsonToMatrix(r.json(), matrix)
+    genotypeMatrix = jsonToDictionary(r.json(), genotypeMatrix)
     while pageToken:
-        params = {'pageSize': 100, 'pageToken': pageToken}
+        params = {'pageSize': PAGESIZE, 'pageToken': pageToken}
         r = requests.get(url + api_path, params=params, headers=headers)
         if 'nextPageToken' in r.json()['metaData']['pagination']:
-            print(r.json()['metaData']['pagination']['nextPageToken'])
             pageToken = r.json()['metaData']['pagination']['nextPageToken']
         else:
             pageToken = ""
-        matrix = jsonToMatrix(r.json(), matrix)
-    return writeMatrixToFile(matrix, outFile)
+        genotypeMatrix = jsonToDictionary(r.json(), genotypeMatrix)
+    return writeMatrixToFile(genotypeMatrix, outFile)
 
 
 """
@@ -125,6 +145,12 @@ Example output for /brapi/v1/variantsets:
 
 
 def jsonToFile(jsonOut, outFile):
+    '''
+    For the Variantset module, API return the json object and this method prints the JSON as a table to the output file
+    :param jsonOut: variantset BrAPI get request json object
+    :param outFile: output file name to write the table to
+    :return: closed the output file handle
+    '''
     outFileHandle = open(outFile, 'w')
     header = "variantSetId" + "\t" + "variantSetName" + "\t" + "studyDbId" + "\t" + "studyName" + "\n"
     outFileHandle.write(header)
@@ -138,22 +164,28 @@ def jsonToFile(jsonOut, outFile):
     return outFileHandle.close()
 
 
-def jsonToMatrix(jsonOut, matrix):
-    if 'name' not in matrix:
-        matrix['name'] = {}
+def jsonToDictionary(jsonOut, genotypeMatrix):
+    '''
+    converts variantset/calls BrAPI output json to a dictionary of marker and samples
+    :param jsonOut:
+    :param genotypeMatrix:
+    :return:
+    '''
+    if 'name' not in genotypeMatrix:
+        genotypeMatrix['name'] = {}
     for variantSet in jsonOut["result"]["data"]:
         callSetName = variantSet["callSetName"]
         variantName = variantSet["variantName"]
         genotype = variantSet["genotype"]['string_value']
-        if callSetName not in matrix['name']:
-            matrix['name'][callSetName] = callSetName
-        if variantName not in matrix:
-            matrix[variantName] = {}
-        matrix[variantName][callSetName] = genotype
-    return matrix
+        if callSetName not in genotypeMatrix['name']:
+            genotypeMatrix['name'][callSetName] = callSetName
+        if variantName not in genotypeMatrix:
+            genotypeMatrix[variantName] = {}
+        genotypeMatrix[variantName][callSetName] = genotype
+    return genotypeMatrix
 
 
-if options.module == "Authentication":
+if options.module == "Authenticate":
     required = "url username password".split()
     for req in required:
         if options.__dict__[req] is None:
@@ -187,5 +219,6 @@ elif options.module == "Extract":
     get_variantset_matrix(url, authToken, variantSetId, outFile)
 
 else:
-    sys.stderr.write("Please specify the module.\n")
+    sys.stderr.write("Please specify the module.\n\n")
+    parser.print_help()
     sys.exit(1)
