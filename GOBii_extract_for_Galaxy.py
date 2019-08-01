@@ -12,7 +12,6 @@
 import requests
 import sys
 import os
-import time
 from optparse import OptionParser
 
 # page size for variantset/[variantsetdbid]/calls
@@ -47,21 +46,21 @@ parser.add_option("-q", "--quiet", action="store_false", dest="verbose", default
 """
 function to extract the Access Token from GOBii GDM using Auth call
 IMPORTANT: Make sure the api_path call it uses from gobii auth as BrAPI does not have auth calls
-	url: GDM instance url (eg: http://hackathon.gobii.org:8081/gobii-dev/)
-	username: GDM unstance username
-	password: Password for the use 'username'
-	return: access token pulled using the API
+    url: GDM instance url (eg: http://hackathon.gobii.org:8081/gobii-dev/)
+    username: GDM unstance username
+    password: Password for the use 'username'
+    return: access token pulled using the API
 """
 
 
 def get_token(url, username, password):
-    '''
+    """
     Function to get access token using "GOBii API" call
     :param url: GOBii GDM url
     :param username: GDM username
     :param password: GDM password
     :return: accessToken
-    '''
+    """
     api_path = 'gobii/v1/auth'
     headers = {'X-Username': username, 'X-Password': password}
     r = requests.post(url + api_path, headers=headers)
@@ -69,13 +68,13 @@ def get_token(url, username, password):
 
 
 def get_variantset_table(url, accessToken, outFile):
-    '''
+    """
     funtion to extract dictionary of information available under the GDM instance
     :param url: GDM url eg: http://hackathon.gobii.org:8081/gobii-dev/
     :param accessToken: accessToken String got from getAccessToken
     :param outFile: OuputFile to create table of results
-    :return: 
-    '''
+    :return:
+    """
     api_path = 'brapi/v1/variantsets'
     headers = {'X-Auth-Token': accessToken}
     r = requests.get(url + api_path, headers=headers)
@@ -105,14 +104,14 @@ def writeMatrixToFile(genotypeMatrix, outFile):
 
 
 def get_variant_calls(url, accessToken, variantSetId, pageToken):
-    '''
+    """
     Function to use BrAPI variantset/[variantsetid]/call
     :param url: GDM url
     :param accessToken:
     :param variantSetId: variantsetdbid
     :param pageToken:
     :return:
-    '''
+    """
     api_path = 'brapi/v1/variantsets/' + str(variantSetId) + "/calls"
     headers = {'X-Auth-Token': accessToken}
     if not pageToken:
@@ -124,14 +123,14 @@ def get_variant_calls(url, accessToken, variantSetId, pageToken):
 
 
 def get_variantset_matrix(url, accessToken, variantSetId, outFile):
-    '''
+    """
     function to pull genotype matix and parse that to a tab
     :param url:
     :param accessToken:
     :param variantSetId:
     :param outFile:
     :return:
-    '''
+    """
     genotypeMatrix = {}
     pageToken = ""
     r = get_variant_calls(url, accessToken, variantSetId, pageToken)
@@ -179,12 +178,12 @@ def jsonToFile(jsonOut, outFile, accessToken):
 
 
 def jsonToDictionary(jsonOut, genotypeMatrix):
-    '''
+    """
     converts variantset/calls BrAPI output json to a dictionary of marker and samples
     :param jsonOut:
     :param genotypeMatrix:
     :return:
-    '''
+    """
     if 'name' not in genotypeMatrix:
         genotypeMatrix['name'] = {}
     for variantSet in jsonOut["result"]["data"]:
@@ -203,7 +202,7 @@ def jsonToDictionary(jsonOut, genotypeMatrix):
 __MAIN__
 '''
 if options.module == "Authenticate":
-    if options.outFile:
+    if os.path.isfile(options.outFile):
         os.remove(options.outFile)
     required = "url username password".split()
     for req in required:
@@ -217,7 +216,7 @@ if options.module == "Authenticate":
     print(accessToken)
 
 elif options.module == "Variantset":
-    if options.outFile:
+    if os.path.isfile(options.outFile):
         os.remove(options.outFile)
     required = "url authToken outFile".split()
     for req in required:
@@ -229,7 +228,7 @@ elif options.module == "Variantset":
     get_variantset_table(url, authToken, outFile)
 
 elif options.module == "Extract":
-    if options.outFile:
+    if os.path.isfile(options.outFile):
         os.remove(options.outFile)
     required = "url authToken variantSetId outFile".split()
     for req in required:
@@ -243,14 +242,14 @@ elif options.module == "Extract":
     get_variantset_matrix(url, authToken, variantSetId, outFile)
 
 elif options.module:
-    if options.outFile:
+    if os.path.isfile(options.outFile):
         os.remove(options.outFile)
     sys.stderr.write("Module specified does not exist.\n\n")
     parser.print_help()
     sys.exit(1)
 
 else:
-    if options.outFile:
+    if os.path.isfile(options.outFile):
         os.remove(options.outFile)
     sys.stderr.write("Please specify the module.\n\n")
     parser.print_help()
