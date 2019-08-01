@@ -15,7 +15,10 @@ import os
 import time
 from optparse import OptionParser
 
+# page size for variantset/[variantsetdbid]/calls
 PAGESIZE = 100000
+# set it True to enable the validation. This will slow down the Variantset module, because there will be BrAPI call
+# for each variantsetdbid to test if the data exists
 ENABLE_VALIDATION = False
 
 usage = "usage: python %prog [options] \n\n\t\
