@@ -61,10 +61,10 @@ def get_token(url, username, password):
     :param password: GDM password
     :return: accessToken
     """
-    api_path = 'gobii/v1/auth'
-    headers = {'X-Username': username, 'X-Password': password}
+    api_path = "gobii/v1/auth"
+    headers = {"X-Username": username, "X-Password": password}
     r = requests.post(url + api_path, headers=headers)
-    return (r.json()['token'])
+    return (r.json()["token"])
 
 
 def get_variantset_table(url, accessToken, outFile):
@@ -75,27 +75,27 @@ def get_variantset_table(url, accessToken, outFile):
     :param outFile: OuputFile to create table of results
     :return:
     """
-    api_path = 'brapi/v1/variantsets'
-    headers = {'X-Auth-Token': accessToken}
+    api_path = "brapi/v1/variantsets"
+    headers = {"X-Auth-Token": accessToken}
     r = requests.get(url + api_path, headers=headers)
     return jsonToFile(r.json(), outFile, accessToken)
 
 
 def writeMatrixToFile(genotypeMatrix, outFile):
-    '''
+    """
     Funtion to write dictionary to a file
     :param genotypeMatrix: dictionary of genotype call dict[markerName][genotypeName]
     :param outFile: output file name
     :return:
-    '''
+    """
     outHeader = "marker_name"
     outFileHandle = open(outFile, 'w')
-    for sampleName in genotypeMatrix['name']:
+    for sampleName in genotypeMatrix["name"]:
         outHeader = outHeader + "\t" + sampleName
     outFileHandle.write(outHeader + "\n")
 
     for markerName in genotypeMatrix:
-        if markerName is not 'name':
+        if markerName is not "name":
             outString = markerName
             for sampleName in genotypeMatrix[markerName]:
                 outString = outString + "\t" + genotypeMatrix[markerName][sampleName]
@@ -112,12 +112,12 @@ def get_variant_calls(url, accessToken, variantSetId, pageToken):
     :param pageToken:
     :return:
     """
-    api_path = 'brapi/v1/variantsets/' + str(variantSetId) + "/calls"
-    headers = {'X-Auth-Token': accessToken}
+    api_path = "brapi/v1/variantsets/" + str(variantSetId) + "/calls"
+    headers = {"X-Auth-Token": accessToken}
     if not pageToken:
-        params = {'pageSize': PAGESIZE}
+        params = {"pageSize": PAGESIZE}
     else:
-        params = {'pageSize': PAGESIZE, 'pageToken': pageToken}
+        params = {"pageSize": PAGESIZE, "pageToken": pageToken}
     r = requests.get(url + api_path, params=params, headers=headers)
     return r
 
@@ -132,19 +132,19 @@ def get_variantset_matrix(url, accessToken, variantSetId, outFile):
     :return:
     """
     genotypeMatrix = {}
-    pageToken = ""
+    pageToken = ''
     r = get_variant_calls(url, accessToken, variantSetId, pageToken)
-    if 'error' in r.json():
+    if "error" in r.json():
         sys.stderr.write("Dataset not found for the search critieria")
         return False
     else:
-        if 'nextPageToken' in r.json()['metaData']['pagination']:
-            pageToken = r.json()['metaData']['pagination']['nextPageToken']
+        if "nextPageToken" in r.json()["metaData"]["pagination"]:
+            pageToken = r.json()["metaData"]["pagination"]["nextPageToken"]
         genotypeMatrix = jsonToDictionary(r.json(), genotypeMatrix)
         while pageToken:
             r = get_variant_calls(url, accessToken, variantSetId, pageToken)
-            if 'nextPageToken' in r.json()['metaData']['pagination']:
-                pageToken = r.json()['metaData']['pagination']['nextPageToken']
+            if "nextPageToken" in r.json()["metaData"]["pagination"]:
+                pageToken = r.json()["metaData"]["pagination"]["nextPageToken"]
             else:
                 pageToken = ""
             genotypeMatrix = jsonToDictionary(r.json(), genotypeMatrix)
@@ -152,12 +152,12 @@ def get_variantset_matrix(url, accessToken, variantSetId, outFile):
 
 
 def jsonToFile(jsonOut, outFile, accessToken):
-    '''
+    """
     For the Variantset module, API return the json object and this method prints the JSON as a table to the output file
     :param jsonOut: variantset BrAPI get request json object
     :param outFile: output file name to write the table to
     :return: closed the output file handle
-    '''
+    """
     outFileHandle = open(outFile, 'w')
     header = "variantSetId" + "\t" + "variantSetName" + "\t" + "studyDbId" + "\t" + "studyName" + "\n"
     outFileHandle.write(header)
@@ -167,8 +167,8 @@ def jsonToFile(jsonOut, outFile, accessToken):
         variantSetName = variantSet["variantSetName"]
         studyName = variantSet["studyName"]
         if ENABLE_VALIDATION:
-            r = get_variant_calls(url, accessToken, variantSetId, pageToken="")
-            if 'error' not in r.json():
+            r = get_variant_calls(url, accessToken, variantSetId, pageToken='')
+            if "error" not in r.json():
                 outString = str(variantSetId) + "\t" + variantSetName + "\t" + str(studyDbId) + "\t" + studyName + "\n"
                 outFileHandle.write(outString)
         else:
@@ -184,26 +184,26 @@ def jsonToDictionary(jsonOut, genotypeMatrix):
     :param genotypeMatrix:
     :return:
     """
-    if 'name' not in genotypeMatrix:
-        genotypeMatrix['name'] = {}
+    if "name" not in genotypeMatrix:
+        genotypeMatrix["name"] = {}
     for variantSet in jsonOut["result"]["data"]:
         callSetName = variantSet["callSetName"]
         variantName = variantSet["variantName"]
-        genotype = variantSet["genotype"]['string_value']
-        if callSetName not in genotypeMatrix['name']:
-            genotypeMatrix['name'][callSetName] = callSetName
+        genotype = variantSet["genotype"]["string_value"]
+        if callSetName not in genotypeMatrix["name"]:
+            genotypeMatrix["name"][callSetName] = callSetName
         if variantName not in genotypeMatrix:
             genotypeMatrix[variantName] = {}
         genotypeMatrix[variantName][callSetName] = genotype
     return genotypeMatrix
 
 
-'''
+"""
 __MAIN__
-'''
+"""
 if options.module == "Authenticate":
-    if os.path.isfile(options.outFile):
-        os.remove(options.outFile)
+    # if os.path.isfile(options.outFile):
+    #     os.remove(options.outFile)
     required = "url username password".split()
     for req in required:
         if options.__dict__[req] is None:
