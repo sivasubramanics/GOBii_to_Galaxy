@@ -238,7 +238,8 @@ elif options.module == "Extract":
     authToken = options.authToken
     variantSetId = options.variantSetId
     outFile = options.outFile
-    os.remove(outFile)
+    if os.path.isfile(options.outFile):
+        os.remove(outFile)
     get_variantset_matrix(url, authToken, variantSetId, outFile)
 
 elif options.module:
